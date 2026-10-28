@@ -59,15 +59,16 @@ h1 .he{font-family:var(--f-he);font-weight:700;font-size:26px;color:var(--accent
 button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* index card */
-.stage{perspective:1200px}
-.card{position:relative;height:300px;cursor:pointer;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.3,.7,.3,1)}
-.card.flipped{transform:rotateY(180deg)}
-.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--paper);border:1px solid var(--line);border-radius:6px;
+.card{position:relative;height:300px;cursor:pointer}
+.card .back{display:none}
+.card.flipped .front{display:none}
+.card.flipped .back{display:flex;animation:flipin .28s ease-out}
+@keyframes flipin{from{opacity:0;transform:scaleX(.7)}to{opacity:1;transform:none}}
+.face{position:absolute;inset:0;background:var(--paper);border:1px solid var(--line);border-radius:6px;
   box-shadow:0 1px 0 var(--line),0 10px 28px -14px rgba(20,35,70,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;gap:10px;text-align:center;overflow:hidden}
 .face::before{content:"";position:absolute;left:0;right:0;top:52px;border-top:2px solid var(--err);opacity:.35}
 .face::after{content:"";position:absolute;inset:54px 0 0;background:repeating-linear-gradient(to bottom,transparent 0 33px,var(--rule) 33px 34px);opacity:.6;pointer-events:none}
 .face>*{position:relative;z-index:1}
-.back{transform:rotateY(180deg)}
 .corner{position:absolute;top:16px;font-size:12px;color:var(--muted);z-index:1}
 .corner.l{left:18px}.corner.r{right:18px}
 .word{font-family:var(--f-he);font-weight:500;font-size:clamp(46px,13vw,68px);line-height:1.15;direction:rtl}
@@ -134,7 +135,7 @@ button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid v
 .ctab>div.cur{border-color:var(--ok);background:var(--ok-soft)}
 .fn{font-size:11px;color:var(--muted)}.fh{font-family:var(--f-he);font-size:20px}.ft{font-size:12px;color:var(--muted)}
 @media (max-width:440px){.ctab{grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{font-size:13px;padding:9px 2px}}
-@media (prefers-reduced-motion:reduce){.card{transition:none}}
+@media (prefers-reduced-motion:reduce){.card.flipped .back{animation:none}}
 </style>
 </head>
 <body>

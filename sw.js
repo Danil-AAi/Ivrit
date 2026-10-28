@@ -1,5 +1,5 @@
 // Меняй номер версии при каждом обновлении файлов, чтобы iPhone подхватил новую версию.
-const VERSION = "ivrit-v1";
+const VERSION = "ivrit-v2";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.png"];
 
 self.addEventListener("install", e => {
