@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Иврит">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#E9EDF2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1522" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Иврит-карточки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Rubik:wght@400;500;600&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+button,.card,.chip{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+
+/* Layout: one column "study desk" — mode tabs, topic chips, then one index card in the middle; Leitner box number in the card corner */
+:root{
+  --bg:#E9EDF2; --paper:#FFFFFF; --ink:#16233F; --muted:#5D6A82; --line:#D3DAE5;
+  --accent:#2350C8; --accent-soft:#DCE5FB; --ok:#1F8A5B; --ok-soft:#D9F1E5; --err:#C23B3B; --err-soft:#F8DEDE;
+  --rule:#C9D6F2;
+  --f-he:"Frank Ruhl Libre","Noto Serif Hebrew","David",serif;
+  --f-ui:"Rubik","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1522; --paper:#18213A; --ink:#E6EBF5; --muted:#93A0BA; --line:#2A3655;
+  --accent:#7C9BFF; --accent-soft:#25335E; --ok:#4FC490; --ok-soft:#173A2C; --err:#F07A7A; --err-soft:#432124; --rule:#26345A;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1522; --paper:#18213A; --ink:#E6EBF5; --muted:#93A0BA; --line:#2A3655;
+  --accent:#7C9BFF; --accent-soft:#25335E; --ok:#4FC490; --ok-soft:#173A2C; --err:#F07A7A; --err-soft:#432124; --rule:#26345A;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.wrap{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+h1 .he{font-family:var(--f-he);font-weight:700;font-size:26px;color:var(--accent)}
+.stat{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tabs{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.tabs button{flex:1;border:0;background:none;color:var(--muted);font:500 14px var(--f-ui);padding:9px 6px;border-radius:9px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:#fff}
+:root[data-theme="dark"] .tabs button[aria-selected="true"]{color:#0F1522}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tabs button[aria-selected="true"]{color:#0F1522}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:400 13px var(--f-ui);padding:6px 11px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:500}
+.opts{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.opts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* index card */
+.stage{perspective:1200px}
+.card{position:relative;height:300px;cursor:pointer;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.3,.7,.3,1)}
+.card.flipped{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--paper);border:1px solid var(--line);border-radius:6px;
+  box-shadow:0 1px 0 var(--line),0 10px 28px -14px rgba(20,35,70,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;gap:10px;text-align:center;overflow:hidden}
+.face::before{content:"";position:absolute;left:0;right:0;top:52px;border-top:2px solid var(--err);opacity:.35}
+.face::after{content:"";position:absolute;inset:54px 0 0;background:repeating-linear-gradient(to bottom,transparent 0 33px,var(--rule) 33px 34px);opacity:.6;pointer-events:none}
+.face>*{position:relative;z-index:1}
+.back{transform:rotateY(180deg)}
+.corner{position:absolute;top:16px;font-size:12px;color:var(--muted);z-index:1}
+.corner.l{left:18px}.corner.r{right:18px}
+.word{font-family:var(--f-he);font-weight:500;font-size:clamp(46px,13vw,68px);line-height:1.15;direction:rtl}
+.tr{font-size:17px;color:var(--muted)}
+.ru{font-size:clamp(24px,7vw,32px);font-weight:500}
+.hint{font-size:12px;color:var(--muted)}
+.say{border:1px solid var(--line);background:var(--paper);color:var(--accent);border-radius:999px;font:500 13px var(--f-ui);padding:5px 12px;cursor:pointer}
+.boxes{display:flex;gap:3px}
+.boxes i{width:8px;height:8px;border-radius:2px;background:var(--line)}
+.boxes i.on{background:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:500 15px var(--f-ui);padding:14px;border-radius:10px;cursor:pointer}
+.btn.no{color:var(--err);border-color:var(--err-soft)}
+.btn.yes{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn kbd{font:12px var(--f-ui);opacity:.6;margin-left:6px}
+
+/* quiz */
+.q{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:26px 20px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.q .ru{font-size:30px}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ans{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:14px 10px;cursor:pointer;font:500 16px var(--f-ui);min-height:64px;min-width:0;overflow-wrap:anywhere}
+.ans.he{font-family:var(--f-he);font-size:26px;direction:rtl}
+.ans.good{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.ans.bad{background:var(--err-soft);border-color:var(--err);color:var(--err)}
+.ans:disabled{cursor:default}
+.qbar{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--paper);color:var(--muted);font:500 12px var(--f-ui);padding:6px 10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.next{align-self:center}
+
+/* dictionary */
+.search{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font:15px var(--f-ui)}
+.list{background:var(--paper);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.item:first-child,.vd:first-child .item{border-top:0}
+.vd{border-top:1px solid var(--line)}.vd:first-child{border-top:0}.vd>summary{list-style:none;cursor:pointer;border-top:0}.vd>summary::-webkit-details-marker{display:none}
+.more{font-size:11px;font-weight:400;color:var(--accent);margin-left:4px}
+.vfull{padding:4px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.vinf{font-size:13px;color:var(--muted)}.vinf span{font-family:var(--f-he);font-size:18px;color:var(--ink)}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.vt{background:var(--paper);border:1px solid var(--line);border-radius:8px;overflow-x:auto;min-width:0}
+.vth{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px 4px}
+.vt table{width:100%;border-collapse:collapse}
+.vt td{padding:5px 10px;border-top:1px solid var(--line);white-space:nowrap}
+.vt .pn{font-family:var(--f-he);font-size:14px;color:var(--muted)}
+.vt .fh{font-family:var(--f-he);font-size:19px}
+.vt .ft{font-size:12px;color:var(--muted);text-align:left}
+.vt tr.cur td{background:var(--ok-soft)}.vt tr.cur .fh{color:var(--ok);font-weight:700}
+.tense{color:var(--accent);font-weight:600}
+.item .h{font-family:var(--f-he);font-size:24px;direction:rtl;text-align:right;order:3}
+.item .m{min-width:0}
+.item .m b{font-weight:500;display:block}
+.item .m span{font-size:12px;color:var(--muted)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.foot{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;font:12px var(--f-ui);cursor:pointer;padding:0}
+.confirm{display:flex;gap:8px;align-items:center}
+.sent{display:flex;gap:10px;align-items:baseline;direction:rtl;margin-top:6px}
+.sent .word{font-size:34px}
+.blank{font-size:26px;color:var(--accent);letter-spacing:.1em}
+.ctab{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;direction:rtl}
+.ctab>div{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.ctab>div.cur{border-color:var(--ok);background:var(--ok-soft)}
+.fn{font-size:11px;color:var(--muted)}.fh{font-family:var(--f-he);font-size:20px}.ft{font-size:12px;color:var(--muted)}
+@media (max-width:440px){.ctab{grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{font-size:13px;padding:9px 2px}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1><span class="he" lang="he">עִבְרִית</span> Иврит-карточки</h1>
+    <div class="stat" id="stat"></div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-cards" aria-selected="true" data-mode="cards">Карточки</button>
+    <button role="tab" id="t-quiz" aria-selected="false" data-mode="quiz">Тест</button>
+    <button role="tab" id="t-conj" aria-selected="false" data-mode="conj">Спряжение</button>
+    <button role="tab" id="t-dict" aria-selected="false" data-mode="dict">Словарь</button>
+  </div>
+
+  <div class="chips" id="chips"></div>
+  <div class="opts">
+    <label><input type="checkbox" id="niq" checked> Огласовки (никуд)</label>
+    <label><input type="checkbox" id="trs" checked> Транскрипция</label>
+  </div>
+
+  <section id="v-cards"></section>
+  <section id="v-quiz" hidden></section>
+  <section id="v-conj" hidden></section>
+  <section id="v-dict" hidden></section>
+
+  <div class="foot">
+    <span>Ящик 0–5: «Знаю» двигает слово вверх, «Не помню» возвращает в 0. Слова из нижних ящиков выпадают чаще.</span>
+    <span id="reset"></span>
+  </div>
+</div>
+
+<script>
+const CATS={base:"Основы",fam:"Семья",food:"Еда",home:"Дом",city:"Город",work:"Работа",verb:"Глаголы",adj:"Прилагательные",num:"Счёт"};
+const W=[
+["שָׁלוֹם","шалом","привет / мир","base"],["תּוֹדָה","тода","спасибо","base"],["בְּבַקָּשָׁה","бевакаша","пожалуйста","base"],
+["כֵּן","кен","да","base"],["לֹא","ло","нет","base"],["סְלִיחָה","слиха","извините","base"],["בֹּקֶר טוֹב","бокер тов","доброе утро","base"],
+["לַיְלָה טוֹב","лайла тов","спокойной ночи","base"],["מָה שְׁלוֹמְךָ?","ма шломха?","как дела? (м.)","base"],["לְהִתְרָאוֹת","леhитраот","до свидания","base"],
+["אַבָּא","аба","папа","fam"],["אִמָּא","има","мама","fam"],["אָח","ах","брат","fam"],["אָחוֹת","ахот","сестра","fam"],["בֵּן","бен","сын","fam"],
+["בַּת","бат","дочь","fam"],["סָבָא","саба","дедушка","fam"],["סָבְתָא","савта","бабушка","fam"],["חָבֵר","хавер","друг","fam"],["מִשְׁפָּחָה","мишпаха","семья","fam"],
+["מַיִם","маим","вода","food"],["לֶחֶם","лехем","хлеб","food"],["קָפֶה","кафе","кофе","food"],["חָלָב","халав","молоко","food"],["בֵּיצָה","бейца","яйцо","food"],
+["תַּפּוּחַ","тапуах","яблоко","food"],["גְּבִינָה","гвина","сыр","food"],["בָּשָׂר","басар","мясо","food"],["אֹרֶז","орез","рис","food"],["מֶלַח","мелах","соль","food"],
+["בַּיִת","баит","дом","home"],["דֶּלֶת","делет","дверь","home"],["חַלּוֹן","халон","окно","home"],["שֻׁלְחָן","шульхан","стол","home"],["כִּסֵּא","кисэ","стул","home"],
+["מִטָּה","мита","кровать","home"],["מִטְבָּח","митбах","кухня","home"],["מַפְתֵּחַ","мафтеах","ключ","home"],
+["עִיר","ир","город","city"],["רְחוֹב","рехов","улица","city"],["רַכֶּבֶת","ракевет","поезд","city"],["אוֹטוֹבּוּס","отобус","автобус","city"],
+["תַּחֲנָה","тахана","остановка, станция","city"],["חֲנוּת","ханут","магазин","city"],["בֵּית חוֹלִים","бейт холим","больница","city"],["יָם","ям","море","city"],
+["שׁוּק","шук","рынок","city"],["כֶּסֶף","кесеф","деньги","city"],
+["עֲבוֹדָה","авода","работа","work"],["מְהַנְדֵּס","меhандес","инженер","work"],["כְּבִישׁ","квиш","шоссе, дорога","work"],["מְסִילָה","месила","рельсовый путь","work"],
+["גֶּשֶׁר","гешер","мост","work"],["תָּכְנִית","тохнит","план, программа","work"],["מַחְשֵׁב","махшев","компьютер","work"],["פְּגִישָׁה","пгиша","встреча","work"],
+["מְנַהֵל","менаhель","начальник","work"],["נִקּוּז","никуз","дренаж","work"],["מִדְרָכָה","мидраха","тротуар","work"],["לוּחַ זְמַנִּים","луах зманим","расписание, график","work"],
+["גָּדוֹל","гадоль","большой","adj"],["קָטָן","катан","маленький","adj"],["חַם","хам","горячий, жаркий","adj"],["קַר","кар","холодный","adj"],
+["יָפֶה","яфе","красивый","adj"],["חָדָשׁ","хадаш","новый","adj"],["טוֹב","тов","хороший","adj"],["רַע","ра","плохой","adj"],
+["אַחַת","ахат","один (счёт)","num"],["שְׁתַּיִם","штаим","два","num"],["שָׁלוֹשׁ","шалош","три","num"],["אַרְבַּע","арба","четыре","num"],["חָמֵשׁ","хамеш","пять","num"],
+["שֵׁשׁ","шеш","шесть","num"],["שֶׁבַע","шева","семь","num"],["שְׁמוֹנֶה","шмоне","восемь","num"],["תֵּשַׁע","теша","девять","num"],["עֶשֶׂר","эсер","десять","num"]
+].map(([he,tr,ru,c])=>({he,tr,ru,c}));
+
+/* глаголы: инфинитив, транскрипция, перевод, биньян, наст. время (м.ед ж.ед м.мн ж.мн) + транскрипция форм */
+const BIN={paal:"паъаль",piel:"пиэль",hifil:"hифъиль",hitpael:"hитпаэль",nifal:"нифъаль"};
+const V=[
+["לִכְתּוֹב","лихтов","писать","paal","כּוֹתֵב כּוֹתֶבֶת כּוֹתְבִים כּוֹתְבוֹת","котев котевет котвим котвот"],
+["לִקְרוֹא","ликро","читать","paal","קוֹרֵא קוֹרֵאת קוֹרְאִים קוֹרְאוֹת","корэ корэт корим корот"],
+["לִלְמוֹד","лильмод","учиться","paal","לוֹמֵד לוֹמֶדֶת לוֹמְדִים לוֹמְדוֹת","ломед ломедет ломдим ломдот"],
+["לַעֲבוֹד","лаавод","работать","paal","עוֹבֵד עוֹבֶדֶת עוֹבְדִים עוֹבְדוֹת","овед оведет овдим овдот"],
+["לֶאֱכוֹל","леэхоль","есть","paal","אוֹכֵל אוֹכֶלֶת אוֹכְלִים אוֹכְלוֹת","охель охелет охлим охлот"],
+["לִשְׁתּוֹת","лиштот","пить","paal","שׁוֹתֶה שׁוֹתָה שׁוֹתִים שׁוֹתוֹת","шотэ шота шотим шотот"],
+["לָלֶכֶת","лалехет","идти","paal","הוֹלֵךְ הוֹלֶכֶת הוֹלְכִים הוֹלְכוֹת","холех холехет холхим холхот"],
+["לִקְנוֹת","ликнот","покупать","paal","קוֹנֶה קוֹנָה קוֹנִים קוֹנוֹת","конэ кона коним конот"],
+["לִשְׁמוֹעַ","лишмоа","слышать","paal","שׁוֹמֵעַ שׁוֹמַעַת שׁוֹמְעִים שׁוֹמְעוֹת","шомеа шомаат шомъим шомъот"],
+["לִרְאוֹת","лиръот","видеть","paal","רוֹאֶה רוֹאָה רוֹאִים רוֹאוֹת","роэ роа роим роот"],
+["לַעֲשׂוֹת","лаасот","делать","paal","עוֹשֶׂה עוֹשָׂה עוֹשִׂים עוֹשׂוֹת","осэ оса осим осот"],
+["לִרְצוֹת","лирцот","хотеть","paal","רוֹצֶה רוֹצָה רוֹצִים רוֹצוֹת","роцэ роца роцим роцот"],
+["לֶאֱהוֹב","леэхов","любить","paal","אוֹהֵב אוֹהֶבֶת אוֹהֲבִים אוֹהֲבוֹת","оhев оhевет оhавим оhавот"],
+["לָשֶׁבֶת","лашевет","сидеть","paal","יוֹשֵׁב יוֹשֶׁבֶת יוֹשְׁבִים יוֹשְׁבוֹת","йошев йошевет йошвим йошвот"],
+["לָדַעַת","ладаат","знать","paal","יוֹדֵעַ יוֹדַעַת יוֹדְעִים יוֹדְעוֹת","йодеа йодаат йодъим йодъот"],
+["לִסְגּוֹר","лисгор","закрывать","paal","סוֹגֵר סוֹגֶרֶת סוֹגְרִים סוֹגְרוֹת","согер согерет согрим согрот"],
+["לִפְתּוֹחַ","лифтоах","открывать","paal","פּוֹתֵחַ פּוֹתַחַת פּוֹתְחִים פּוֹתְחוֹת","потеах потахат потхим потхот"],
+["לִנְסוֹעַ","линсоа","ехать","paal","נוֹסֵעַ נוֹסַעַת נוֹסְעִים נוֹסְעוֹת","носеа носаат носъим носъот"],
+["לִשְׁאוֹל","лишоль","спрашивать","paal","שׁוֹאֵל שׁוֹאֶלֶת שׁוֹאֲלִים שׁוֹאֲלוֹת","шоэль шоэлет шоалим шоалот"],
+["לַחְשׁוֹב","лахшов","думать","paal","חוֹשֵׁב חוֹשֶׁבֶת חוֹשְׁבִים חוֹשְׁבוֹת","хошев хошевет хошвим хошвот"],
+["לָתֵת","латет","давать","paal","נוֹתֵן נוֹתֶנֶת נוֹתְנִים נוֹתְנוֹת","нотен нотенет нотним нотнот"],
+["לָקַחַת","лакахат","брать","paal","לוֹקֵחַ לוֹקַחַת לוֹקְחִים לוֹקְחוֹת","локеах локахат локхим локхот"],
+["לִמְצוֹא","лимцо","находить","paal","מוֹצֵא מוֹצֵאת מוֹצְאִים מוֹצְאוֹת","моцэ моцэт моцъим моцъот"],
+["לִזְכּוֹר","лизкор","помнить","paal","זוֹכֵר זוֹכֶרֶת זוֹכְרִים זוֹכְרוֹת","зохер зохерет зохрим зохрот"],
+["לָגוּר","лагур","жить, проживать","paal","גָּר גָּרָה גָּרִים גָּרוֹת","гар гара гарим гарот"],
+["לָשִׁיר","лашир","петь","paal","שָׁר שָׁרָה שָׁרִים שָׁרוֹת","шар шара шарим шарот"],
+["לָבוֹא","лаво","приходить","paal","בָּא בָּאָה בָּאִים בָּאוֹת","ба баа баим баот"],
+["לָקוּם","лакум","вставать","paal","קָם קָמָה קָמִים קָמוֹת","кам кама камим камот"],
+["לָרוּץ","ларуц","бегать","paal","רָץ רָצָה רָצִים רָצוֹת","рац раца рацим рацот"],
+["לִישׁוֹן","лишон","спать","paal","יָשֵׁן יְשֵׁנָה יְשֵׁנִים יְשֵׁנוֹת","яшен йешена йешеним йешенот"],
+["לְדַבֵּר","ледабер","говорить","piel","מְדַבֵּר מְדַבֶּרֶת מְדַבְּרִים מְדַבְּרוֹת","медабер медаберет медабрим медаброт"],
+["לְשַׁלֵּם","лешалем","платить","piel","מְשַׁלֵּם מְשַׁלֶּמֶת מְשַׁלְּמִים מְשַׁלְּמוֹת","мешалем мешалемет мешальмим мешальмот"],
+["לְבַקֵּשׁ","левакеш","просить","piel","מְבַקֵּשׁ מְבַקֶּשֶׁת מְבַקְּשִׁים מְבַקְּשׁוֹת","мевакеш мевакешет мевакшим мевакшот"],
+["לְחַפֵּשׂ","лехапес","искать","piel","מְחַפֵּשׂ מְחַפֶּשֶׂת מְחַפְּשִׂים מְחַפְּשׂוֹת","мехапес мехапесет мехапсим мехапсот"],
+["לְסַפֵּר","лесапер","рассказывать","piel","מְסַפֵּר מְסַפֶּרֶת מְסַפְּרִים מְסַפְּרוֹת","месапер месаперет месаприм месапрот"],
+["לְנַגֵּן","ленаген","играть (на инструменте)","piel","מְנַגֵּן מְנַגֶּנֶת מְנַגְּנִים מְנַגְּנוֹת","менаген менагенет менагним менагнот"],
+["לְבַשֵּׁל","левашель","готовить (еду)","piel","מְבַשֵּׁל מְבַשֶּׁלֶת מְבַשְּׁלִים מְבַשְּׁלוֹת","мевашель мевашелет мевашлим мевашлот"],
+["לְלַמֵּד","лелямед","учить (кого-то)","piel","מְלַמֵּד מְלַמֶּדֶת מְלַמְּדִים מְלַמְּדוֹת","мелямед мелямедет мелямдим мелямдот"],
+["לְתַכְנֵן","летахнен","планировать, проектировать","piel","מְתַכְנֵן מְתַכְנֶנֶת מְתַכְנְנִים מְתַכְנְנוֹת","метахнен метахненет метахненим метахненот"],
+["לְהָבִין","леhавин","понимать","hifil","מֵבִין מְבִינָה מְבִינִים מְבִינוֹת","мевин мевина мевиним мевинот"],
+["לְהַתְחִיל","леhатхиль","начинать","hifil","מַתְחִיל מַתְחִילָה מַתְחִילִים מַתְחִילוֹת","матхиль матхила матхилим матхилот"],
+["לְהַזְמִין","леhазмин","заказывать, приглашать","hifil","מַזְמִין מַזְמִינָה מַזְמִינִים מַזְמִינוֹת","мазмин мазмина мазминим мазминот"],
+["לְהַרְגִּישׁ","леhаргиш","чувствовать","hifil","מַרְגִּישׁ מַרְגִּישָׁה מַרְגִּישִׁים מַרְגִּישׁוֹת","маргиш маргиша маргишим маргишот"],
+["לְהַסְבִּיר","леhасбир","объяснять","hifil","מַסְבִּיר מַסְבִּירָה מַסְבִּירִים מַסְבִּירוֹת","масбир масбира масбирим масбирот"],
+["לְהִתְלַבֵּשׁ","леhитлабеш","одеваться","hitpael","מִתְלַבֵּשׁ מִתְלַבֶּשֶׁת מִתְלַבְּשִׁים מִתְלַבְּשׁוֹת","митлабеш митлабешет митлабшим митлабшот"],
+["לְהִתְקַשֵּׁר","леhиткашер","звонить","hitpael","מִתְקַשֵּׁר מִתְקַשֶּׁרֶת מִתְקַשְּׁרִים מִתְקַשְּׁרוֹת","миткашер миткашерет миткашрим миткашрот"],
+["לְהִסְתַּכֵּל","леhистакель","смотреть","hitpael","מִסְתַּכֵּל מִסְתַּכֶּלֶת מִסְתַּכְּלִים מִסְתַּכְּלוֹת","мистакель мистакелет мистаклим мистаклот"],
+["לְהִתְרַחֵץ","леhитрахец","мыться","hitpael","מִתְרַחֵץ מִתְרַחֶצֶת מִתְרַחֲצִים מִתְרַחֲצוֹת","митрахец митрахецет митрахацим митрахацот"],
+["לְהִכָּנֵס","леhиканес","входить","nifal","נִכְנָס נִכְנֶסֶת נִכְנָסִים נִכְנָסוֹת","никнас никнесет никнасим никнасот"],
+["לְהִשָּׁאֵר","леhишаер","оставаться","nifal","נִשְׁאָר נִשְׁאֶרֶת נִשְׁאָרִים נִשְׁאָרוֹת","нишъар нишъерет нишъарим нишъарот"],
+["לְהִפָּגֵשׁ","леhипагеш","встречаться","nifal","נִפְגָּשׁ נִפְגֶּשֶׁת נִפְגָּשִׁים נִפְגָּשׁוֹת","нифгаш нифгешет нифгашим нифгашот"]
+].map(([he,tr,ru,b,f,ft])=>({he,tr,ru,c:"verb",b,f:f.split(" "),ft:ft.split(" ")}));
+W.push(...V);
+const VX=["כתבתי כתבת כתבת כתב כתבה כתבנו כתבתם כתבתן כתבו|катавти катавта катавт катав катва катавну ктавтем ктавтен катву|אכתוב תכתוב תכתבי יכתוב נכתוב תכתבו יכתבו|эхтов тихтов тихтеви йихтов нихтов тихтеву йихтеву", "קראתי קראת קראת קרא קראה קראנו קראתם קראתן קראו|карати карата карат кара кара карану кратем кратен кару|אקרא תקרא תקראי יקרא נקרא תקראו יקראו|экра тикра тикри йикра никра тикру йикру", "למדתי למדת למדת למד למדה למדנו למדתם למדתן למדו|ламадти ламадта ламадт ламад ламда ламадну лмадтем лмадтен ламду|אלמד תלמד תלמדי ילמד נלמד תלמדו ילמדו|эльмад тильмад тильмеди йильмад нильмад тильмеду йильмеду", "עבדתי עבדת עבדת עבד עבדה עבדנו עבדתם עבדתן עבדו|авадти авадта авадт авад авда авадну авадтем авадтен авду|אעבוד תעבוד תעבדי יעבוד נעבוד תעבדו יעבדו|аавод таавод таавди яавод наавод таавду яавду", "אכלתי אכלת אכלת אכל אכלה אכלנו אכלתם אכלתן אכלו|ахальти ахальта ахальт ахаль ахла ахальну ахальтем ахальтен ахлу|אוכל תאכל תאכלי יאכל נאכל תאכלו יאכלו|охаль тохаль тохли йохаль нохаль тохлу йохлу", "שתיתי שתית שתית שתה שתתה שתינו שתיתם שתיתן שתו|шатити шатита шатит шата шатта шатину штитем штитен шату|אשתה תשתה תשתי ישתה נשתה תשתו ישתו|эштэ тиштэ тишти йиштэ ништэ тишту йишту", "הלכתי הלכת הלכת הלך הלכה הלכנו הלכתם הלכתן הלכו|халахти халахта халахт халах халха халахну халахтем халахтен халху|אלך תלך תלכי ילך נלך תלכו ילכו|элех телех тельхи йелех нелех тельху йельху", "קניתי קנית קנית קנה קנתה קנינו קניתם קניתן קנו|канити канита канит кана канта канину книтем книтен кану|אקנה תקנה תקני יקנה נקנה תקנו יקנו|экнэ тикнэ тикни йикнэ никнэ тикну йикну", "שמעתי שמעת שמעת שמע שמעה שמענו שמעתם שמעתן שמעו|шамати шамата шамат шама шамъа шаману шматем шматен шамъу|אשמע תשמע תשמעי ישמע נשמע תשמעו ישמעו|эшма тишма тишмеи йишма нишма тишмеу йишмеу", "ראיתי ראית ראית ראה ראתה ראינו ראיתם ראיתן ראו|раити раита раит раа раата раину реитем реитен рау|אראה תראה תראי יראה נראה תראו יראו|эръэ тиръэ тиръи йиръэ ниръэ тиръу йиръу", "עשיתי עשית עשית עשה עשתה עשינו עשיתם עשיתן עשו|асити асита асит аса аста асину аситем аситен асу|אעשה תעשה תעשי יעשה נעשה תעשו יעשו|эесэ таасэ тааси яасэ наасэ таасу яасу", "רציתי רצית רצית רצה רצתה רצינו רציתם רציתן רצו|рацити рацита рацит раца рацта рацину рцитем рцитен рацу|ארצה תרצה תרצי ירצה נרצה תרצו ירצו|эрцэ тирцэ тирци йирцэ нирцэ тирцу йирцу", "אהבתי אהבת אהבת אהב אהבה אהבנו אהבתם אהבתן אהבו|аhавти аhавта аhавт аhав аhава аhавну аhавтем аhавтен аhаву|אוהב תאהב תאהבי יאהב נאהב תאהבו יאהבו|оhав тоhав тоhави йоhав ноhав тоhаву йоhаву", "ישבתי ישבת ישבת ישב ישבה ישבנו ישבתם ישבתן ישבו|яшавти яшавта яшавт яшав яшва яшавну яшавтем яшавтен яшву|אשב תשב תשבי ישב נשב תשבו ישבו|эшев тешев тешви йешев нешев тешву йешву", "ידעתי ידעת ידעת ידע ידעה ידענו ידעתם ידעתן ידעו|ядати ядата ядат яда ядъа ядану ядатем ядатен ядъу|אדע תדע תדעי ידע נדע תדעו ידעו|эда теда тедъи йеда неда тедъу йедъу", "סגרתי סגרת סגרת סגר סגרה סגרנו סגרתם סגרתן סגרו|сагарти сагарта сагарт сагар сагра сагарну сгартем сгартен сагру|אסגור תסגור תסגרי יסגור נסגור תסגרו יסגרו|эсгор тисгор тисгери йисгор нисгор тисгеру йисгеру", "פתחתי פתחת פתחת פתח פתחה פתחנו פתחתם פתחתן פתחו|патахти патахта патахт патах патха патахну птахтем птахтен патху|אפתח תפתח תפתחי יפתח נפתח תפתחו יפתחו|эфтах тифтах тифтехи йифтах нифтах тифтеху йифтеху", "נסעתי נסעת נסעת נסע נסעה נסענו נסעתם נסעתן נסעו|насати насата насат наса насъа насану нсатем нсатен насъу|אסע תסע תסעי יסע נסע תסעו יסעו|эса тиса тисъи йиса ниса тисъу йисъу", "שאלתי שאלת שאלת שאל שאלה שאלנו שאלתם שאלתן שאלו|шаальти шаальта шаальт шааль шаала шаальну шъальтем шъальтен шаалу|אשאל תשאל תשאלי ישאל נשאל תשאלו ישאלו|эшъаль тишъаль тишали йишъаль нишъаль тишалу йишалу", "חשבתי חשבת חשבת חשב חשבה חשבנו חשבתם חשבתן חשבו|хашавти хашавта хашавт хашав хашва хашавну хашавтем хашавтен хашву|אחשוב תחשוב תחשבי יחשוב נחשוב תחשבו יחשבו|ахшов тахшов тахшеви яхшов нахшов тахшеву яхшеву", "נתתי נתת נתת נתן נתנה נתנו נתתם נתתן נתנו|натати натата натат натан натна натану нтатем нтатен натну|אתן תיתן תיתני ייתן ניתן תיתנו ייתנו|этен титен титни йитен нитен титну йитну", "לקחתי לקחת לקחת לקח לקחה לקחנו לקחתם לקחתן לקחו|лакахти лакахта лакахт лаках лакха лакахну лкахтем лкахтен лакху|אקח תיקח תיקחי ייקח ניקח תיקחו ייקחו|эках тиках тикхи йиках никах тикху йикху", "מצאתי מצאת מצאת מצא מצאה מצאנו מצאתם מצאתן מצאו|мацати мацата мацат маца мацъа мацану мцатем мцатен мацъу|אמצא תמצא תמצאי ימצא נמצא תמצאו ימצאו|эмца тимца тимцъи йимца нимца тимцъу йимцъу", "זכרתי זכרת זכרת זכר זכרה זכרנו זכרתם זכרתן זכרו|захарти захарта захарт захар захра захарну зхартем зхартен захру|אזכור תזכור תזכרי יזכור נזכור תזכרו יזכרו|эзкор тизкор тизкери йизкор низкор тизкеру йизкеру", "גרתי גרת גרת גר גרה גרנו גרתם גרתן גרו|гарти гарта гарт гар гара гарну гартем гартен гару|אגור תגור תגורי יגור נגור תגורו יגורו|агур тагур тагури ягур нагур тагуру ягуру", "שרתי שרת שרת שר שרה שרנו שרתם שרתן שרו|шарти шарта шарт шар шара шарну шартем шартен шару|אשיר תשיר תשירי ישיר נשיר תשירו ישירו|ашир ташир ташири яшир нашир таширу яширу", "באתי באת באת בא באה באנו באתם באתן באו|бати бата бат ба баа бану батем батен бау|אבוא תבוא תבואי יבוא נבוא תבואו יבואו|аво таво тавои яво наво тавоу явоу", "קמתי קמת קמת קם קמה קמנו קמתם קמתן קמו|камти камта камт кам кама камну камтем камтен каму|אקום תקום תקומי יקום נקום תקומו יקומו|акум такум такуми якум накум такуму якуму", "רצתי רצת רצת רץ רצה רצנו רצתם רצתן רצו|рацти рацта рацт рац раца рацну рацтем рацтен рацу|ארוץ תרוץ תרוצי ירוץ נרוץ תרוצו ירוצו|аруц таруц таруци яруц наруц таруцу яруцу", "ישנתי ישנת ישנת ישן ישנה ישנו ישנתם ישנתן ישנו|яшанти яшанта яшант яшан яшна яшану яшантем яшантен яшну|אישן תישן תישני יישן נישן תישנו יישנו|ишан тишан тишни йишан нишан тишну йишну", "דיברתי דיברת דיברת דיבר דיברה דיברנו דיברתם דיברתן דיברו|дибарти дибарта дибарт дибер дибра дибарну дибартем дибартен дибру|אדבר תדבר תדברי ידבר נדבר תדברו ידברו|адабер тедабер тедабри йедабер недабер тедабру йедабру", "שילמתי שילמת שילמת שילם שילמה שילמנו שילמתם שילמתן שילמו|шилямти шилямта шилямт шилем шильма шилямну шилямтем шилямтен шильму|אשלם תשלם תשלמי ישלם נשלם תשלמו ישלמו|ашалем тешалем тешальми йешалем нешалем тешальму йешальму", "ביקשתי ביקשת ביקשת ביקש ביקשה ביקשנו ביקשתם ביקשתן ביקשו|бикашти бикашта бикашт бикеш бикша бикашну бикаштем бикаштен бикшу|אבקש תבקש תבקשי יבקש נבקש תבקשו יבקשו|авакеш тевакеш тевакши йевакеш невакеш тевакшу йевакшу", "חיפשתי חיפשת חיפשת חיפש חיפשה חיפשנו חיפשתם חיפשתן חיפשו|хипасти хипаста хипаст хипес хипса хипасну хипастем хипастен хипсу|אחפש תחפש תחפשי יחפש נחפש תחפשו יחפשו|ахапес техапес техапси йехапес нехапес техапсу йехапсу", "סיפרתי סיפרת סיפרת סיפר סיפרה סיפרנו סיפרתם סיפרתן סיפרו|сипарти сипарта сипарт сипер сипра сипарну сипартем сипартен сипру|אספר תספר תספרי יספר נספר תספרו יספרו|асапер тесапер тесапри йесапер несапер тесапру йесапру", "ניגנתי ניגנת ניגנת ניגן ניגנה ניגנו ניגנתם ניגנתן ניגנו|ниганти ниганта нигант ниген нигна нигану нигантем нигантен нигну|אנגן תנגן תנגני ינגן ננגן תנגנו ינגנו|анаген тенаген тенагни йенаген ненаген тенагну йенагну", "בישלתי בישלת בישלת בישל בישלה בישלנו בישלתם בישלתן בישלו|бишальти бишальта бишальт бишель бишла бишальну бишальтем бишальтен бишлу|אבשל תבשל תבשלי יבשל נבשל תבשלו יבשלו|авашель тевашель тевашли йевашель невашель тевашлу йевашлу", "לימדתי לימדת לימדת לימד לימדה לימדנו לימדתם לימדתן לימדו|лимадти лимадта лимадт лимед лимда лимадну лимадтем лимадтен лимду|אלמד תלמד תלמדי ילמד נלמד תלמדו ילמדו|алямед телямед телямди йелямед нелямед телямду йелямду", "תכננתי תכננת תכננת תכנן תכננה תכננו תכננתם תכננתן תכננו|тихнанти тихнанта тихнант тихнен тихнена тихнану тихнантем тихнантен тихнену|אתכנן תתכנן תתכנני יתכנן נתכנן תתכננו יתכננו|атахнен тетахнен тетахнени йетахнен нетахнен тетахнену йетахнену", "הבנתי הבנת הבנת הבין הבינה הבנו הבנתם הבנתן הבינו|hеванти hеванта hевант hевин hевина hевану hевантем hевантен hевину|אבין תבין תביני יבין נבין תבינו יבינו|авин тавин тавини явин навин тавину явину", "התחלתי התחלת התחלת התחיל התחילה התחלנו התחלתם התחלתן התחילו|hитхальти hитхальта hитхальт hитхиль hитхила hитхальну hитхальтем hитхальтен hитхилу|אתחיל תתחיל תתחילי יתחיל נתחיל תתחילו יתחילו|атхиль татхиль татхили ятхиль натхиль татхилу ятхилу", "הזמנתי הזמנת הזמנת הזמין הזמינה הזמנו הזמנתם הזמנתן הזמינו|hизманти hизманта hизмант hизмин hизмина hизману hизмантем hизмантен hизмину|אזמין תזמין תזמיני יזמין נזמין תזמינו יזמינו|азмин тазмин тазмини язмин назмин тазмину язмину", "הרגשתי הרגשת הרגשת הרגיש הרגישה הרגשנו הרגשתם הרגשתן הרגישו|hиргашти hиргашта hиргашт hиргиш hиргиша hиргашну hиргаштем hиргаштен hиргишу|ארגיש תרגיש תרגישי ירגיש נרגיש תרגישו ירגישו|аргиш таргиш таргиши яргиш наргиш таргишу яргишу", "הסברתי הסברת הסברת הסביר הסבירה הסברנו הסברתם הסברתן הסבירו|hисбарти hисбарта hисбарт hисбир hисбира hисбарну hисбартем hисбартен hисбиру|אסביר תסביר תסבירי יסביר נסביר תסבירו יסבירו|асбир тасбир тасбири ясбир насбир тасбиру ясбиру", "התלבשתי התלבשת התלבשת התלבש התלבשה התלבשנו התלבשתם התלבשתן התלבשו|hитлабашти hитлабашта hитлабашт hитлабеш hитлабша hитлабашну hитлабаштем hитлабаштен hитлабшу|אתלבש תתלבש תתלבשי יתלבש נתלבש תתלבשו יתלבשו|этлабеш титлабеш титлабши йитлабеш нитлабеш титлабшу йитлабшу", "התקשרתי התקשרת התקשרת התקשר התקשרה התקשרנו התקשרתם התקשרתן התקשרו|hиткашарти hиткашарта hиткашарт hиткашер hиткашра hиткашарну hиткашартем hиткашартен hиткашру|אתקשר תתקשר תתקשרי יתקשר נתקשר תתקשרו יתקשרו|эткашер титкашер титкашри йиткашер ниткашер титкашру йиткашру", "הסתכלתי הסתכלת הסתכלת הסתכל הסתכלה הסתכלנו הסתכלתם הסתכלתן הסתכלו|hистакальти hистакальта hистакальт hистакель hистакла hистакальну hистакальтем hистакальтен hистаклу|אסתכל תסתכל תסתכלי יסתכל נסתכל תסתכלו יסתכלו|эстакель тистакель тистакли йистакель нистакель тистаклу йистаклу", "התרחצתי התרחצת התרחצת התרחץ התרחצה התרחצנו התרחצתם התרחצתן התרחצו|hитрахацти hитрахацта hитрахацт hитрахец hитрахаца hитрахацну hитрахацтем hитрахацтен hитрахацу|אתרחץ תתרחץ תתרחצי יתרחץ נתרחץ תתרחצו יתרחצו|этрахец титрахец титрахаци йитрахец нитрахец титрахацу йитрахацу", "נכנסתי נכנסת נכנסת נכנס נכנסה נכנסנו נכנסתם נכנסתן נכנסו|никнасти никнаста никнаст никнас никнеса никнасну никнастем никнастен никнесу|אכנס תיכנס תיכנסי ייכנס ניכנס תיכנסו ייכנסו|эканес тиканес тиканси йиканес никанес тикансу йикансу", "נשארתי נשארת נשארת נשאר נשארה נשארנו נשארתם נשארתן נשארו|нишъарти нишъарта нишъарт нишъар нишъара нишъарну нишъартем нишъартен нишъару|אשאר תישאר תישארי יישאר נישאר תישארו יישארו|эшаэр тишаэр тишаари йишаэр нишаэр тишаару йишаару", "נפגשתי נפגשת נפגשת נפגש נפגשה נפגשנו נפגשתם נפגשתן נפגשו|нифгашти нифгашта нифгашт нифгаш нифгеша нифгашну нифгаштем нифгаштен нифгешу|איפגש תיפגש תיפגשי ייפגש ניפגש תיפגשו ייפגשו|эпагеш типагеш типагши йипагеш нипагеш типагшу йипагшу"];
+V.forEach((v,i)=>{const [a,b,c,d]=VX[i].split("|").map(x=>x.split(" "));v.p=a;v.pt=b;v.fu=c;v.fut=d});
+const TN={pres:"настоящее",past:"прошедшее",fut:"будущее"};
+/* местоимения: индекс формы в наст./прош./буд. */
+const PR=[["אֲנִי","я (м.)",0,0,0],["אֲנִי","я (ж.)",1,0,0],["אַתָּה","ты (м.)",0,1,1],["אַתְּ","ты (ж.)",1,2,2],["הוּא","он",0,3,3],["הִיא","она",1,4,1],
+  ["אֲנַחְנוּ","мы (м.)",2,5,4],["אֲנַחְנוּ","мы (ж.)",3,5,4],["אַתֶּם","вы (м.)",2,6,5],["אַתֶּן","вы (ж.)",3,7,5],["הֵם","они (м.)",2,8,6],["הֵן","они (ж.)",3,8,6]];
+const TI={pres:2,past:3,fut:4};
+const ROWS={pres:[["אֲנִי, אַתָּה, הוּא",0],["אֲנִי, אַתְּ, הִיא",1],["אֲנַחְנוּ, אַתֶּם, הֵם",2],["אֲנַחְנוּ, אַתֶּן, הֵן",3]],
+  past:[["אֲנִי",0],["אַתָּה",1],["אַתְּ",2],["הוּא",3],["הִיא",4],["אֲנַחְנוּ",5],["אַתֶּם",6],["אַתֶּן",7],["הֵם, הֵן",8]],
+  fut:[["אֲנִי",0],["אַתָּה",1],["אַתְּ",2],["הוּא",3],["הִיא",1],["אֲנַחְנוּ",4],["אַתֶּם, אַתֶּן",5],["הֵם, הֵן",6]]};
+const formsOf=(v,t)=>t==="pres"?v.f.map((h,i)=>({h:st.niq?h:strip(h),t:v.ft[i]})):t==="past"?v.p.map((h,i)=>({h,t:v.pt[i]})):v.fu.map((h,i)=>({h,t:v.fut[i]}));
+function tenseTable(v,t,hi){const F=formsOf(v,t);
+  return `<div class="vt"><div class="vth">${TN[t]}</div><table dir="rtl">${ROWS[t].map(([pn,i])=>`<tr class="${i===hi?"cur":""}"><td class="pn" lang="he">${esc(st.niq?pn:strip(pn))}</td><td class="fh" lang="he">${esc(F[i].h)}</td><td class="ft" dir="ltr">${F[i].t}</td></tr>`).join("")}</table></div>`}
+const fullTable=v=>`<div class="vfull"><div class="vinf"><span lang="he">${esc(heTxt(v))}</span> · ${esc(v.tr)} · ${BIN[v.b]}</div><div class="vgrid">${["past","pres","fut"].map(t=>tenseTable(v,t,-1)).join("")}</div></div>`;
+const catLabel=w=>CATS[w.c]+(w.b?" · "+BIN[w.b]:"");
+const PRON=[[["אֲנִי","я (м.)"],["אַתָּה","ты (м.)"],["הוּא","он"]],[["אֲנִי","я (ж.)"],["אַתְּ","ты (ж.)"],["הִיא","она"]],
+  [["אֲנַחְנוּ","мы (м.)"],["אַתֶּם","вы (м.)"],["הֵם","они (м.)"]],[["אֲנַחְנוּ","мы (ж.)"],["אַתֶּן","вы (ж.)"],["הֵן","они (ж.)"]]];
+const FN=["м. ед.","ж. ед.","м. мн.","ж. мн."];
+
+const strip=s=>s.replace(/[֑-ֽֿ-ׂׄ-ׇ]/g,"");
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let st={mode:"cards",cats:Object.keys(CATS),bins:Object.keys(BIN),tense:"all",niq:true,trs:true,dir:"he",lv:{}};
+try{const s=JSON.parse(localStorage.getItem("ivrit-cards")||"null");if(s)st=Object.assign(st,s)}catch(e){}
+const save=()=>{try{localStorage.setItem("ivrit-cards",JSON.stringify(st))}catch(e){}};
+const lv=w=>st.lv[strip(w.he)]||0;
+const setLv=(w,n)=>{st.lv[strip(w.he)]=Math.max(0,Math.min(5,n));save();stat()};
+const heTxt=w=>st.niq?w.he:strip(w.he);
+const pool=()=>{const p=W.filter(w=>st.cats.includes(w.c));return p.length?p:W};
+let last=null;
+function pick(){
+  const p=pool().filter(w=>w!==last||pool().length<2);
+  let tot=0;const ws=p.map(w=>{const x=(6-lv(w))**2;tot+=x;return x});
+  let r=Math.random()*tot;for(let i=0;i<p.length;i++){r-=ws[i];if(r<=0)return last=p[i]}
+  return last=p[p.length-1];
+}
+function speak(t){try{const u=new SpeechSynthesisUtterance(strip(t));u.lang="he-IL";u.rate=.8;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+const boxes=n=>`<span class="boxes" title="Ящик ${n} из 5">${[1,2,3,4,5].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</span>`;
+function stat(){const p=pool();const k=p.filter(w=>lv(w)>=3).length;$("stat").textContent=`Выучено ${k} из ${p.length}`}
+
+function chips(){
+  const all=st.cats.length===Object.keys(CATS).length;
+  $("chips").innerHTML=`<button class="chip" id="c-all" aria-pressed="${all}">Все темы</button>`+
+    Object.entries(CATS).map(([k,v])=>`<button class="chip" id="c-${k}" data-c="${k}" aria-pressed="${!all&&st.cats.includes(k)}">${v}</button>`).join("");
+}
+$("chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;
+  const all=st.cats.length===Object.keys(CATS).length;
+  if(!b.dataset.c)st.cats=Object.keys(CATS);
+  else{const c=b.dataset.c;
+    if(all)st.cats=[c];
+    else if(st.cats.includes(c)){st.cats=st.cats.filter(x=>x!==c);if(!st.cats.length)st.cats=Object.keys(CATS)}
+    else st.cats.push(c);}
+  save();chips();stat();render(true)};
+
+/* cards */
+let cur=null;
+function cards(newWord){
+  if(newWord||!cur)cur=pick();const w=cur;
+  $("v-cards").innerHTML=`<div class="stage"><div class="card" id="card" tabindex="0" role="button" aria-label="Перевернуть карточку">
+    <div class="face front"><span class="corner l">${catLabel(w)}</span><span class="corner r">${boxes(lv(w))}</span>
+      <div class="word" lang="he">${esc(heTxt(w))}</div>${st.trs?`<div class="tr">${esc(w.tr)}</div>`:""}
+      <div class="hint">нажми или пробел, чтобы перевернуть</div></div>
+    <div class="face back"><span class="corner l">${catLabel(w)}</span><span class="corner r">${boxes(lv(w))}</span>
+      <div class="ru">${esc(w.ru)}</div><div class="word" lang="he" style="font-size:34px">${esc(w.he)}</div><div class="tr">${esc(w.tr)}</div>
+      <button class="say" id="say">▶ Произнести</button></div></div></div>
+    <div class="row" style="margin-top:16px"><button class="btn no" id="no">Не помню<kbd>1</kbd></button><button class="btn yes" id="yes">Знаю<kbd>2</kbd></button></div>`;
+  const card=$("card");
+  card.onclick=e=>{if(e.target.id==="say"){e.stopPropagation();speak(w.he);return}card.classList.toggle("flipped")};
+  $("no").onclick=()=>{setLv(w,0);cards(true)};
+  $("yes").onclick=()=>{setLv(w,lv(w)+1);cards(true)};
+}
+
+/* quiz */
+let q=null,score={ok:0,all:0,streak:0};
+function quiz(newQ){
+  if(newQ||!q){const w=pick();const p=pool().length>=4?pool():W;
+    const opts=[w];while(opts.length<4){const o=p[Math.floor(Math.random()*p.length)];if(!opts.includes(o)&&o.ru!==w.ru)opts.push(o)}
+    opts.sort(()=>Math.random()-.5);q={w,opts,done:false}}
+  const he=st.dir==="he",w=q.w;
+  $("v-quiz").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    <div class="qbar"><div class="seg"><button id="d-he" aria-pressed="${he}">иврит → русский</button><button id="d-ru" aria-pressed="${!he}">русский → иврит</button></div>
+      <span>Верно ${score.ok} из ${score.all} · серия ${score.streak}</span></div>
+    <div class="q"><span class="hint">${catLabel(w)}</span>
+      ${he?`<div class="word" lang="he">${esc(heTxt(w))}</div>${st.trs?`<div class="tr">${esc(w.tr)}</div>`:""}`:`<div class="ru">${esc(w.ru)}</div>`}
+      <button class="say" id="say" ${he?"":"hidden"}>▶ Произнести</button></div>
+    <div class="answers">${q.opts.map((o,i)=>`<button class="ans ${he?"":"he"}" id="a${i}" data-i="${i}" ${he?"":'lang="he"'}>${esc(he?o.ru:heTxt(o))}</button>`).join("")}</div>
+    <button class="btn next" id="nextq" hidden>Дальше →</button></div>`;
+  $("d-he").onclick=()=>{st.dir="he";save();quiz(true)};$("d-ru").onclick=()=>{st.dir="ru";save();quiz(true)};
+  $("say").onclick=()=>speak(w.he);
+  document.querySelectorAll(".ans").forEach(b=>b.onclick=()=>answer(+b.dataset.i));
+  $("nextq").onclick=()=>quiz(true);
+}
+function answer(i){
+  if(q.done)return;q.done=true;const o=q.opts[i],ok=o===q.w;
+  score.all++;if(ok){score.ok++;score.streak++;setLv(q.w,lv(q.w)+1)}else{score.streak=0;setLv(q.w,0)}
+  q.opts.forEach((x,j)=>{const b=$("a"+j);b.disabled=true;if(x===q.w)b.classList.add("good");else if(j===i)b.classList.add("bad")});
+  if(!ok){const b=$("a"+q.opts.indexOf(q.w));if(st.dir==="ru")b.innerHTML+=`<div style="font:13px var(--f-ui)">${esc(q.w.tr)}</div>`}
+  document.querySelector(".qbar span").textContent=`Верно ${score.ok} из ${score.all} · серия ${score.streak}`;
+  if(ok)setTimeout(()=>{if(st.mode==="quiz"&&q.done)quiz(true)},900);else $("nextq").hidden=false;
+}
+
+/* dictionary */
+let qstr="";
+function dict(){
+  if(!$("dq")){$("v-dict").innerHTML=`<div style="display:flex;flex-direction:column;gap:12px"><input class="search" id="dq" placeholder="Поиск: по-русски, транскрипцией или на иврите"><div class="list" id="dl"></div></div>`;
+    $("dq").oninput=e=>{qstr=e.target.value.trim().toLowerCase();dictList()}}
+  dictList();
+}
+function dictList(){
+  const s=strip(qstr);const p=pool().filter(w=>!s||w.ru.includes(s)||w.tr.includes(s)||strip(w.he).includes(s));
+  $("dl").innerHTML=p.length?p.map(w=>w.p?`<details class="vd"><summary class="item"><span class="h" lang="he">${esc(heTxt(w))}</span>${boxes(lv(w))}<span class="m"><b>${esc(w.ru)} <span class="more">таблица ▾</span></b><span>${esc(w.tr)} · ${catLabel(w)}</span></span></summary>${fullTable(w)}</details>`:`<div class="item"><span class="h" lang="he">${esc(heTxt(w))}</span>${boxes(lv(w))}<span class="m"><b>${esc(w.ru)}</b><span>${esc(w.tr)} · ${catLabel(w)}</span></span></div>`).join("")
+    :`<div class="empty">Ничего не найдено. Попробуй другое слово или выбери «Все темы».</div>`;
+}
+
+/* conjugation: all tenses */
+let cq=null,cs={ok:0,all:0,streak:0};
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function conj(newQ){
+  if(newQ||!cq){const p=V.filter(v=>st.bins.includes(v.b));const v=rnd(p);
+    const t=st.tense==="all"?rnd(["pres","past","fut"]):st.tense;const pr=rnd(PR);const F=formsOf(v,t);const ci=pr[TI[t]];const correct=F[ci].h;
+    const others=[...new Set(F.map(x=>x.h))].filter(h=>h!==correct).sort(()=>Math.random()-.5).slice(0,3);
+    cq={v,t,pr,ci,correct,opts:[correct,...others].sort(()=>Math.random()-.5),done:false}}
+  const {v,pr,t}=cq;const allB=st.bins.length===Object.keys(BIN).length;
+  $("v-conj").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    <div class="qbar"><div class="seg">${[["pres","Наст."],["past","Прош."],["fut","Буд."],["all","Все"]].map(([k,n])=>`<button data-t="${k}" aria-pressed="${st.tense===k}">${n}</button>`).join("")}</div>
+      <span id="cscore">Верно ${cs.ok} из ${cs.all} · серия ${cs.streak}</span></div>
+    <div class="chips">${`<button class="chip" id="b-all" aria-pressed="${allB}">Все биньяны</button>`+Object.entries(BIN).map(([k,n])=>`<button class="chip" id="b-${k}" data-b="${k}" aria-pressed="${!allB&&st.bins.includes(k)}">${n}</button>`).join("")}</div>
+    <div class="q"><span class="hint">${BIN[v.b]} · <b class="tense">${TN[t]} время</b></span>
+      <div class="ru">${esc(v.ru)}</div><div class="word" lang="he" style="font-size:30px">${esc(heTxt(v))}</div>
+      <div class="sent"><span class="word" lang="he">${esc(st.niq?pr[0]:strip(pr[0]))}</span><span class="blank" lang="he">＿＿＿</span></div>
+      <div class="tr">${pr[1]}</div></div>
+    <div class="answers">${cq.opts.map((h,i)=>`<button class="ans he" id="ca${i}" data-i="${i}" lang="he">${esc(h)}</button>`).join("")}</div>
+    <div id="ctab" hidden></div>
+    <button class="btn next" id="nextc" hidden>Дальше →</button></div>`;
+  document.querySelectorAll("#v-conj .seg button").forEach(b=>b.onclick=()=>{st.tense=b.dataset.t;save();conj(true)});
+  document.querySelectorAll("#v-conj .chip").forEach(b=>b.onclick=()=>{
+    const all=st.bins.length===Object.keys(BIN).length,k=b.dataset.b;
+    if(!k)st.bins=Object.keys(BIN);else if(all)st.bins=[k];
+    else if(st.bins.includes(k)){st.bins=st.bins.filter(x=>x!==k);if(!st.bins.length)st.bins=Object.keys(BIN)}else st.bins.push(k);
+    save();conj(true)});
+  document.querySelectorAll("#v-conj .ans").forEach(b=>b.onclick=()=>cAnswer(+b.dataset.i));
+  $("nextc").onclick=()=>conj(true);
+}
+function cAnswer(i){
+  if(!cq||cq.done||i>=cq.opts.length)return;cq.done=true;const ok=cq.opts[i]===cq.correct;
+  cs.all++;if(ok){cs.ok++;cs.streak++}else cs.streak=0;
+  cq.opts.forEach((h,j)=>{const b=$("ca"+j);b.disabled=true;if(h===cq.correct)b.classList.add("good");else if(j===i)b.classList.add("bad")});
+  $("ctab").hidden=false;$("ctab").innerHTML=tenseTable(cq.v,cq.t,cq.ci);
+  $("cscore").textContent=`Верно ${cs.ok} из ${cs.all} · серия ${cs.streak}`;
+  speak(cq.correct);$("nextc").hidden=false;$("nextc").focus();
+}
+
+function render(reset){
+  $("chips").hidden=st.mode==="conj";
+  ["cards","quiz","conj","dict"].forEach(m=>{$("v-"+m).hidden=m!==st.mode;$("t-"+m).setAttribute("aria-selected",m===st.mode)});
+  if(st.mode==="cards")cards(reset);else if(st.mode==="quiz")quiz(reset);else if(st.mode==="conj")conj(reset);else dict();
+}
+document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.mode=b.dataset.mode;save();render(false)};
+$("niq").checked=st.niq;$("trs").checked=st.trs;
+$("niq").onchange=e=>{st.niq=e.target.checked;save();render(false)};
+$("trs").onchange=e=>{st.trs=e.target.checked;save();render(false)};
+
+function resetUI(confirming){
+  $("reset").innerHTML=confirming?`<span class="confirm">Стереть прогресс? <button class="link" id="ry">Да</button><button class="link" id="rn">Нет</button></span>`:`<button class="link" id="r0">Сбросить прогресс</button>`;
+  if(confirming){$("ry").onclick=()=>{st.lv={};save();stat();render(false);resetUI(false)};$("rn").onclick=()=>resetUI(false)}
+  else $("r0").onclick=()=>resetUI(true);
+}
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT")return;
+  if(st.mode==="cards"){if(e.code==="Space"){e.preventDefault();$("card").classList.toggle("flipped")}
+    else if(e.key==="1")$("no").click();else if(e.key==="2")$("yes").click()}
+  else if(st.mode==="quiz"){if(/^[1-4]$/.test(e.key))answer(+e.key-1);else if(e.key==="Enter"&&q.done)quiz(true)}
+  else if(st.mode==="conj"){if(/^[1-4]$/.test(e.key))cAnswer(+e.key-1);else if(e.key==="Enter"&&cq&&cq.done)conj(true)}
+});
+chips();stat();resetUI(false);render(true);
+</script>
+
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+</body>
+</html>
